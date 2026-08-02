@@ -1,0 +1,17 @@
+title = "Org Secret Scanning Rules"
+version = 3
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-password-rule"
+description = "Generic password assignment"
+# SHIELD-5: word boundaries (\b) stop the old substring false positives —
+# `pass` no longer fires inside `bypass`, and the too-short `sec` (which hit
+# `section` etc.) is dropped. The value class adds . / + = ~ so base64 (with
+# `/` and `=` padding) and JWTs (with `.`) are captured in full instead of
+# truncating at the first such character (a false negative in the old class).
+regex = '''(?i)\b(?:password|passwd|pass|secret)\b\s*[:=]\s*["']?[A-Za-z0-9._/+=~!@#$%^&*()-]{8,}["']?'''
+tags = ["password", "generic"]
+severity = "high"
