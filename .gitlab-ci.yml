@@ -15,7 +15,9 @@ test:
     - if: $CI_COMMIT_BRANCH
 
 release:
-  image: goreleaser/goreleaser:latest
+  image:
+    name: goreleaser/goreleaser:latest
+    entrypoint: [""]
   stage: release
   tags:
     - lab
