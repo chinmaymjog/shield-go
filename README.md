@@ -9,12 +9,27 @@ install/update/uninstall scripts with a single static binary distributed via
 a Homebrew tap, so `brew install`/`upgrade`/`uninstall` replace
 `setup-machine.sh`/`self-update.sh`/`uninstall-machine.sh` entirely.
 
+## Install
+
+```sh
+brew tap mydemoorg/sourceguard1/homebrew-shield https://gitlab.com/mydemoorg/sourceguard1/homebrew-shield
+brew install mydemoorg/sourceguard1/homebrew-shield/shield
+```
+
 ## Build
 
 ```sh
 go build -o bin/shield ./cmd/shield
 ./bin/shield version
 ```
+
+## Releasing
+
+Push a `vX.Y.Z` tag to `main`. GitLab CI runs
+[goreleaser](https://goreleaser.com) (see [.goreleaser.yaml](.goreleaser.yaml)),
+which cross-builds `darwin`/`linux` × `amd64`/`arm64` binaries, publishes a
+GitLab Release with the archives attached, and pushes the matching
+`Formula/shield.rb` to [homebrew-shield](https://gitlab.com/mydemoorg/sourceguard1/homebrew-shield).
 
 ## Commands
 
