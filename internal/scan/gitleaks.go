@@ -7,10 +7,10 @@ import (
 
 // runGitleaks runs `gitleaks protect --staged` against the git index diff
 // directly — naturally scoped to what's about to be committed, no manual
-// file copy needed. Flags mirror hooks/pre-commit exactly: --verbose prints
-// the File/Line/RuleID for each finding (without it, only a "leaks found: N"
-// count is shown); --log-level warn drops the routine "N commits scanned"
-// noise; --no-color avoids raw ANSI escapes around --redact's REDACTED text.
+// file copy needed. --verbose prints the File/Line/RuleID for each finding
+// (without it, only a "leaks found: N" count is shown); --log-level warn
+// drops the routine "N commits scanned" noise; --no-color avoids raw ANSI
+// escapes around --redact's REDACTED text.
 func runGitleaks(binPath, configPath, repoRoot string) (bool, error) {
 	args := []string{
 		"protect", "--staged", "--no-banner", "--verbose", "--log-level", "warn", "--no-color",

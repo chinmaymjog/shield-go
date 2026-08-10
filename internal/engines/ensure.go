@@ -8,8 +8,7 @@ import (
 )
 
 // Ensure returns the path to spec's cached binary, downloading and
-// verifying it first if it isn't already cached. Mirrors
-// ensure_gitleaks/ensure_trufflehog in hooks/pre-commit.
+// verifying it first if it isn't already cached.
 func Ensure(spec Spec) (string, error) {
 	assetArch, err := arch(spec.Name)
 	if err != nil {

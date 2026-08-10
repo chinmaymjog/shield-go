@@ -26,10 +26,10 @@ var githubReleaseBase = "https://github.com"
 // checksums.txt, and only then extracts binName into destPath.
 //
 // This fails closed: a missing pin, a failed fetch, or any digest mismatch
-// returns an error and installs nothing. Mirrors verified_download in
-// hooks/pre-commit — including the bug it fixed (SHIELD-2): the old bash
-// code proceeded WITHOUT verification whenever checksums.txt couldn't be
-// fetched, so blocking that one request let an attacker install anything.
+// returns an error and installs nothing. That matters more than it might
+// look: a naive implementation that fell back to "trust it" whenever
+// checksums.txt couldn't be fetched would let an attacker who can block or
+// tamper with just that one request install anything they want.
 func verifiedDownload(spec Spec, assetOS, assetArch, destPath string) error {
 	if spec.ChecksumsSHA256 == "" {
 		return fmt.Errorf("%s: no pinned checksums digest — refusing to install unverified", spec.Name)

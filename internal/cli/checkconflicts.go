@@ -9,8 +9,7 @@ import (
 )
 
 // runCheckConflicts reports repos where a local core.hooksPath shadows
-// shield's global hook, mirroring check-hooks-conflicts.sh. Purely
-// informational — like the bash script, it always exits 0.
+// shield's global hook. Purely informational — always exits 0.
 func runCheckConflicts(args []string) int {
 	var root string
 	if len(args) > 0 {

@@ -7,9 +7,8 @@ import (
 )
 
 // RepoRoot returns the current git repository's top level, or "" if the
-// current directory isn't inside a git repo — mirroring hooks/pre-commit's
-// silent exit 0 when git rev-parse fails (this hook must never block a
-// developer for running a command outside a repo).
+// current directory isn't inside a git repo. Silent, not an error: this
+// hook must never block a developer for running a command outside a repo.
 func RepoRoot() (string, error) {
 	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -28,7 +27,7 @@ func HasStagedChanges(repoRoot string) bool {
 }
 
 // ChangedFiles lists the files staged in this commit (add/copy/modify/
-// rename only) — the exact set hooks/pre-commit snapshots and scans.
+// rename only) — the exact set the hook snapshots and scans.
 func ChangedFiles(repoRoot string) ([]string, error) {
 	out, err := exec.Command("git", "-C", repoRoot, "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").Output()
 	if err != nil {

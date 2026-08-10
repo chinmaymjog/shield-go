@@ -12,8 +12,8 @@ import (
 
 // noisyTrufflehogLine matches trufflehog stderr lines with no actionable
 // info: the ASCII-art banner and the routine "running source"/"finished
-// scanning" status lines. Trufflehog has no flag to lower its own verbosity,
-// so hooks/pre-commit filtered these by hand — same here.
+// scanning" status lines. Trufflehog has no flag to lower its own
+// verbosity, so these are filtered out by hand.
 var noisyTrufflehogLine = regexp.MustCompile(`🐷|running source|finished scanning`)
 
 // runTrufflehog runs `trufflehog filesystem` against the staged-file

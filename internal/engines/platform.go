@@ -7,9 +7,9 @@ import (
 
 // arch returns the release-asset architecture string for toolName on this
 // machine. gitleaks and trufflehog name amd64 differently in their release
-// assets (x64 vs amd64) — mirrors the GL_ARCH/TH_ARCH split in
-// hooks/pre-commit. runtime.GOOS ("linux"/"darwin") already matches both
-// tools' asset naming directly, so unlike arch there's no OS mapping needed.
+// assets (x64 vs amd64), hence the per-tool switch below. runtime.GOOS
+// ("linux"/"darwin") already matches both tools' asset naming directly, so
+// unlike arch there's no OS mapping needed.
 func arch(toolName string) (string, error) {
 	switch runtime.GOARCH {
 	case "amd64":
