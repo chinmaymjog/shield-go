@@ -28,6 +28,10 @@ func Run(args []string) int {
 	case "version":
 		fmt.Println(version.String())
 		return 0
+	case "install":
+		return runInstall(args[1:])
+	case "uninstall":
+		return runUninstall(args[1:])
 	case "hook-run":
 		return runHook(args[1:])
 	case "check-conflicts":
@@ -46,6 +50,8 @@ func printUsage(w io.Writer) {
 	fmt.Fprint(w, `Usage: shield <command> [flags]
 
 Commands:
+  install           set up shield as the global git pre-commit hook
+  uninstall         remove shield's global git pre-commit hook
   hook-run          run as the git pre-commit hook (scans staged files)
   check-conflicts   report repos with a conflicting local core.hooksPath
   version           print the shield version

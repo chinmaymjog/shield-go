@@ -8,8 +8,8 @@ import (
 )
 
 // Run performs the full staged-file secret scan — the logic behind
-// `shield hook-run`. Returns the process exit code the bash hook would have
-// returned: 0 for clean/skipped, 1 for blocked.
+// `shield hook-run`. Returns the process exit code git expects from a
+// pre-commit hook: 0 for clean/skipped, 1 for blocked.
 func Run() int {
 	repoRoot, err := RepoRoot()
 	if err != nil {

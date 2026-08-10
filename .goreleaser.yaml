@@ -60,3 +60,16 @@ brews:
       system "#{bin}/shield", "version"
     install: |
       bin.install "shield"
+    # Deliberately NOT a post_install hook: `shield install` sets git's
+    # GLOBAL core.hooksPath, which affects every repo on the machine, not
+    # just files under this formula's Cellar prefix. Homebrew has no
+    # matching post_uninstall hook for Formulas, so a silent post_install
+    # would be asymmetric with `brew uninstall` (global git config left
+    # dangling) and would fire in any environment `brew install` runs in,
+    # including CI/containers that just want the binary. A caveat pointing
+    # at the explicit command keeps this an opt-in, auditable step for a
+    # security tool while still being hard to miss.
+    caveats: |
+      Run `shield install` to activate the pre-commit hook (sets git's
+      global core.hooksPath — covers every repo on this machine).
+      Run `shield uninstall` before `brew uninstall` to reverse it.

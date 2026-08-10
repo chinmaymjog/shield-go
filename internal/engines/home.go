@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 )
 
-// Home returns the shield home directory, honoring the same
-// SOURCEGUARD_SHIELD_HOME override the bash implementation uses.
+// Home returns shield's state directory (cached engine binaries, the
+// installed hook script), honoring the SOURCEGUARD_SHIELD_HOME override.
 func Home() (string, error) {
 	if h := os.Getenv("SOURCEGUARD_SHIELD_HOME"); h != "" {
 		return h, nil

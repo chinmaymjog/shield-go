@@ -49,10 +49,9 @@ func localHooksPath(repo string) (string, bool) {
 	return strings.TrimSpace(string(out)), true
 }
 
-// resolveAbs mirrors hooks/pre-commit's `[ -d "${repo}/${local_path}" ] &&
-// abs_local="$(cd "${repo}/${local_path}" && pwd)"`: only resolved to an
-// absolute path when repo/localPath is actually a directory, otherwise
-// compared as the raw configured value.
+// resolveAbs resolves repo/localPath to an absolute path only when it's
+// actually a directory (matching how git itself resolves a relative
+// core.hooksPath); otherwise it's compared as the raw configured value.
 func resolveAbs(repo, localPath string) string {
 	candidate := repo + "/" + localPath
 	if info, err := os.Stat(candidate); err == nil && info.IsDir() {
