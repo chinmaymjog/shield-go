@@ -13,6 +13,7 @@ a Homebrew tap, so `brew install`/`upgrade`/`uninstall` replace
 
 ```sh
 brew tap chinmaymjog/homebrew-shield
+brew trust chinmaymjog/homebrew-shield  # one-time, newer Homebrew versions require this for new taps
 brew install chinmaymjog/homebrew-shield/shield
 ```
 
