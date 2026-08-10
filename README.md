@@ -12,8 +12,8 @@ a Homebrew tap, so `brew install`/`upgrade`/`uninstall` replace
 ## Install
 
 ```sh
-brew tap mydemoorg/sourceguard1/homebrew-shield https://gitlab.com/mydemoorg/sourceguard1/homebrew-shield
-brew install mydemoorg/sourceguard1/homebrew-shield/shield
+brew tap chinmaymjog/homebrew-shield
+brew install chinmaymjog/homebrew-shield/shield
 ```
 
 ## Build
@@ -25,11 +25,11 @@ go build -o bin/shield ./cmd/shield
 
 ## Releasing
 
-Push a `vX.Y.Z` tag to `main`. GitLab CI runs
+Push a `vX.Y.Z` tag to `main`. A GitHub Actions workflow runs
 [goreleaser](https://goreleaser.com) (see [.goreleaser.yaml](.goreleaser.yaml)),
 which cross-builds `darwin`/`linux` × `amd64`/`arm64` binaries, publishes a
-GitLab Release with the archives attached, and pushes the matching
-`Formula/shield.rb` to [homebrew-shield](https://gitlab.com/mydemoorg/sourceguard1/homebrew-shield).
+GitHub Release with the archives attached, and pushes the matching
+`Formula/shield.rb` to [homebrew-shield](https://github.com/chinmaymjog/homebrew-shield).
 
 ## Commands
 

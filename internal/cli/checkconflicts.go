@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"gitlab.com/mydemoorg/sourceguard1/shield-go/internal/conflicts"
+	"github.com/chinmaymjog/shield-go/internal/conflicts"
 )
 
 // runCheckConflicts reports repos where a local core.hooksPath shadows

@@ -20,9 +20,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X gitlab.com/mydemoorg/sourceguard1/shield-go/internal/version.Version={{ .Version }}
-      - -X gitlab.com/mydemoorg/sourceguard1/shield-go/internal/version.Commit={{ .Commit }}
-      - -X gitlab.com/mydemoorg/sourceguard1/shield-go/internal/version.Date={{ .Date }}
+      - -X github.com/chinmaymjog/shield-go/internal/version.Version={{ .Version }}
+      - -X github.com/chinmaymjog/shield-go/internal/version.Commit={{ .Commit }}
+      - -X github.com/chinmaymjog/shield-go/internal/version.Date={{ .Date }}
 
 archives:
   - id: shield-archive
@@ -33,36 +33,28 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
-# gitlab.com only; no self-hosted instance to point at.
 release:
-  gitlab:
-    owner: mydemoorg/sourceguard1
+  github:
+    owner: chinmaymjog
     name: shield-go
 
-# GITLAB_TOKEN (api scope, project access token on this repo) creates the
-# release above. HOMEBREW_TAP_TOKEN (write_repository scope, project access
-# token on homebrew-shield) authenticates the push below — both are GitLab
-# project access tokens, so no token_type override is needed (that's a
-# GoReleaser Pro feature for cross-SCM publishing only).
+# GITHUB_TOKEN (repo scope, default in Actions or a PAT locally) creates the
+# release above. HOMEBREW_TAP_TOKEN (repo scope PAT on homebrew-shield)
+# authenticates the push below.
 brews:
   - name: shield
-    # goreleaser's default url_template assumes GitHub; since we release on
-    # GitLab, this must be set explicitly to GitLab's permanent release-asset
-    # link format, or the generated formula points at a github.com URL that
-    # doesn't exist.
-    url_template: "https://gitlab.com/mydemoorg/sourceguard1/shield-go/-/releases/{{ .Tag }}/downloads/{{ .ArtifactName }}"
     repository:
-      owner: mydemoorg/sourceguard1
+      owner: chinmaymjog
       name: homebrew-shield
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
       branch: main
     directory: Formula
-    homepage: "https://gitlab.com/mydemoorg/sourceguard1/shield-go"
+    homepage: "https://github.com/chinmaymjog/shield-go"
     description: "Local git pre-commit secret scanning (gitleaks + trufflehog), installed once per machine."
     license: "MIT"
     commit_author:
       name: goreleaser-bot
-      email: goreleaser-bot@users.noreply.gitlab.com
+      email: goreleaser-bot@users.noreply.github.com
     commit_msg_template: "brew: update shield to {{ .Tag }}"
     test: |
       system "#{bin}/shield", "version"

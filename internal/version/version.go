@@ -2,7 +2,7 @@
 //
 // These vars are overridden at build time via -ldflags, e.g.:
 //
-//	go build -ldflags "-X gitlab.com/mydemoorg/sourceguard1/shield-go/internal/version.Version=1.2.3" ./cmd/shield
+//	go build -ldflags "-X github.com/chinmaymjog/shield-go/internal/version.Version=1.2.3" ./cmd/shield
 //
 // goreleaser will do this automatically once the release pipeline (a later
 // module) is wired up. Until then, local builds report "dev".
