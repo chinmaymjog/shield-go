@@ -13,7 +13,7 @@ import (
 	"io"
 	"os"
 
-	"gitlab.com/mydemoorg/sourceguard1/shield-go/internal/version"
+	"github.com/chinmaymjog/shield-go/internal/version"
 )
 
 // Run executes the subcommand named by args[0] and returns a process exit

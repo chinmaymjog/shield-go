@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitlab.com/mydemoorg/sourceguard1/shield-go/internal/engines"
+	"github.com/chinmaymjog/shield-go/internal/engines"
 )
 
 // HooksDir returns the directory shield's global core.hooksPath points at.

@@ -5,7 +5,7 @@ package main
 import (
 	"os"
 
-	"gitlab.com/mydemoorg/sourceguard1/shield-go/internal/cli"
+	"github.com/chinmaymjog/shield-go/internal/cli"
 )
 
 func main() {

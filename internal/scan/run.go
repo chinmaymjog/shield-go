@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"gitlab.com/mydemoorg/sourceguard1/shield-go/internal/engines"
+	"github.com/chinmaymjog/shield-go/internal/engines"
 )
 
 // Run performs the full staged-file secret scan — the logic behind
