@@ -12,6 +12,10 @@ writes, so every repository on that machine — current and future clones —
 gets scanned automatically. There's no `.pre-commit-config.yaml`, no
 per-repo setup, nothing for a consumer repo to opt into or maintain.
 
+**Platforms:** macOS and Linux, `amd64`/`arm64`. No Windows build —
+goreleaser only cross-compiles `darwin`/`linux` (see
+[`.goreleaser.yaml`](.goreleaser.yaml)).
+
 ## Quick start
 
 ```sh
