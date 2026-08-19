@@ -61,6 +61,57 @@ present). A trufflehog finding is a *verified* credential — the tool
 actually confirmed it works against the live provider — so the answer is
 to rotate/revoke it, not suppress it.
 
+## What shield catches (and what it won't)
+
+Detection is **shape- and verification-based, not "does this look like a
+secret to a human."** That's a deliberate precision-over-recall choice to
+keep false-positive noise low enough that people don't start ignoring
+blocked commits. In practice:
+
+**Catches:**
+- Real credentials matching a known token format — AWS, GitHub, Stripe,
+  GitLab, private key blocks, and everything else in gitleaks' default
+  ruleset, plus a couple of gaps we've had to close ourselves (see below).
+- Any credential trufflehog can *verify* still works against the live
+  provider — regardless of format, since it doesn't rely on shape at all.
+- `password`/`passwd`/`pass`/`secret`-named assignments, including
+  compound names like `MYSQL_PASSWORD` or `APP_SECRET`
+  ([`internal/scan/gitleaks.toml`](internal/scan/gitleaks.toml)).
+- Connection strings with embedded credentials — a `user:password@host`
+  segment inside a Postgres/MySQL/MongoDB/Redis/AMQP-scheme URL — which
+  gitleaks' own default ruleset doesn't cover at all.
+
+**Won't catch:**
+- A fake token in the wrong shape for what it's pretending to be — wrong
+  length, or characters the real format doesn't allow (e.g. a GitHub token
+  needs exactly 36 characters after `ghp_`; a GitLab PAT is `glpat-` + 20
+  alphanumeric characters with no punctuation). This is the single most
+  common cause of "shield missed my test secret" — the test value itself
+  wasn't shaped like a real one.
+- Low-entropy/placeholder-looking values — `abcdefghijklmnop...`,
+  repeated characters, sequential digits. Real key material is random;
+  several rules (private keys, AWS keys, generic API keys) gate on entropy
+  specifically to avoid flagging obvious placeholder text.
+- Well-known documented example credentials, e.g. AWS's own
+  `AKIAIOSFODNN7EXAMPLE` — intentionally allowlisted so copying an
+  official SDK example doesn't block a commit.
+- An arbitrary secret-shaped value under a variable name that isn't
+  `password`/`secret`/a recognized vendor's format — e.g. `t1 = "..."` or
+  a made-up `api_key_...` prefix with no real provider behind it. gitleaks
+  does have a generic API-key rule, but it's still name/shape-gated, not a
+  catch-all for "any high-entropy string, anywhere."
+- Secrets already committed to history before shield was installed —
+  pre-commit only ever sees what's staged in *this* commit (see
+  [How scanning works](#how-scanning-works) above); that's a different
+  tool's job.
+
+**If you're testing this yourself**, use a realistically-shaped fake (the
+correct prefix and length for whatever you're impersonating) rather than
+an arbitrary string — that's what actually exercises detection. A real
+miss on a realistically-shaped, reasonably-random fake secret is a bug;
+please report it. A miss on a malformed or placeholder-looking one is
+usually working as intended — this section is why.
+
 ## Local hooksPath conflicts
 
 `core.hooksPath` is git's lowest-precedence hook setting: any repo with its
