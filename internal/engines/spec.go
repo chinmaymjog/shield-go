@@ -19,13 +19,13 @@ type Spec struct {
 var Gitleaks = Spec{
 	Repo:            "gitleaks/gitleaks",
 	Name:            "gitleaks",
-	Version:         "8.30.0",
-	ChecksumsSHA256: "78e53de2429bde6500a6f22793546babe6ae75634a0c250c37e3a07703856a90",
+	Version:         "8.30.1",
+	ChecksumsSHA256: "061476c21adaf5441516f96f185c1a4706a83cd6329b9b38762271b3d4a52fae",
 }
 
 var Trufflehog = Spec{
 	Repo:            "trufflesecurity/trufflehog",
 	Name:            "trufflehog",
-	Version:         "3.82.13",
-	ChecksumsSHA256: "8f57a662a64d82316d1e784a6d199ef8a03fd92aba2b0e809f2b8d578985e49b",
+	Version:         "3.99.0",
+	ChecksumsSHA256: "77cebeaaf3613b95ac10546e2a3eb8f81a50b5e682d44ba435452c60570e161f",
 }
