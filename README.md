@@ -153,9 +153,10 @@ anything is extracted or executed — see the comments in
 [`internal/engines/download.go`](internal/engines/download.go) for exactly
 what's verified and why it fails closed on any mismatch.
 
-Caching is keyed by version, so a pin bump downloads the new version
-alongside the old one rather than replacing it in place; `shield uninstall`
-clears the whole cache regardless of version.
+Caching is keyed by version. After a pin bump, the first commit downloads
+the new version, and any other cached versions of that engine are deleted
+automatically — the cache only ever holds the versions the installed shield
+actually uses. `shield uninstall` clears the whole cache.
 
 ## Forking this for your own org
 
