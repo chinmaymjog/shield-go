@@ -1,0 +1,6 @@
+# Changes to these paths always require review from the owner.
+*                       @chinmaymjog
+/.github/               @chinmaymjog
+/.goreleaser.yaml       @chinmaymjog
+/internal/engines/      @chinmaymjog
+/internal/cli/          @chinmaymjog
