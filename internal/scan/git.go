@@ -51,8 +51,10 @@ func Snapshot(repoRoot string, files []string) (string, func(), error) {
 	}
 	cleanup := func() { os.RemoveAll(dir) }
 
-	args := append([]string{"-C", repoRoot, "checkout-index", "--prefix=" + dir + "/", "-f", "--"}, files...)
-	cmd := exec.Command("git", args...)
+	// Paths go over stdin (NUL-separated) rather than argv so a large commit
+	// can't exceed ARG_MAX.
+	cmd := exec.Command("git", "-C", repoRoot, "checkout-index", "--prefix="+dir+"/", "-f", "--stdin", "-z")
+	cmd.Stdin = strings.NewReader(nulList(files))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -60,4 +62,14 @@ func Snapshot(repoRoot string, files []string) (string, func(), error) {
 		return "", nil, err
 	}
 	return dir, cleanup, nil
+}
+
+// nulList joins paths as a NUL-terminated list for `git ... --stdin -z`.
+func nulList(files []string) string {
+	var b strings.Builder
+	for _, f := range files {
+		b.WriteString(f)
+		b.WriteByte(0)
+	}
+	return b.String()
 }
