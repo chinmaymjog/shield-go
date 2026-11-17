@@ -1,4 +1,4 @@
-name: claude
+name: Claude agent
 
 # Runs Claude only when the repo owner mentions @claude. Claude proposes
 # changes as branches/PRs; a human must review and merge. Never trigger this
