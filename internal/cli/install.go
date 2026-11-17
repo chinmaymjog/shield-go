@@ -42,6 +42,14 @@ func runInstall(args []string) int {
 		return 1
 	}
 
+	for _, name := range forwardedHooks {
+		shimPath := filepath.Join(hooksDir, name)
+		if err := os.WriteFile(shimPath, []byte(forwardScript(name)), 0o755); err != nil {
+			fmt.Fprintln(os.Stderr, "shield: could not write", shimPath, ":", err)
+			return 1
+		}
+	}
+
 	if err := exec.Command("git", "config", "--global", "core.hooksPath", hooksDir).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "shield: could not set git core.hooksPath:", err)
 		return 1
@@ -77,22 +85,60 @@ func hookScript(selfHint string) string {
 		if c == "" {
 			continue
 		}
-		fmt.Fprintf(&fallback, "[ -x %s ] && exec %s hook-run \"$@\"\n", shq(c), shq(c))
+		fmt.Fprintf(&fallback, "[ -z \"$SHIELD\" ] && [ -x %s ] && SHIELD=%s\n", shq(c), shq(c))
 	}
 
 	return fmt.Sprintf(`#!/bin/sh
 # Installed by "shield install". Resolves the shield binary robustly:
 # $PATH first (the common case for terminal-driven commits), then a short
 # list of well-known install locations for GUI git clients that run hooks
-# with a minimal PATH.
+# with a minimal PATH. After the scan passes, chains to the repo's own
+# pre-commit hook (core.hooksPath would otherwise silently disable it).
+SHIELD=
 if command -v shield >/dev/null 2>&1; then
-  exec shield hook-run "$@"
-fi
+  SHIELD=shield
+else
 %s
-echo "shield: could not locate the shield binary (checked \$PATH and common install locations)." >&2
-echo "shield: re-run 'shield install', or make sure shield is on \$PATH, then retry the commit." >&2
-exit 1
+fi
+if [ -z "$SHIELD" ]; then
+  echo "shield: could not locate the shield binary (checked \$PATH and common install locations)." >&2
+  echo "shield: re-run 'shield install', or make sure shield is on \$PATH, then retry the commit." >&2
+  exit 1
+fi
+"$SHIELD" hook-run "$@" || exit $?
+repo_hook="$(git rev-parse --git-common-dir 2>/dev/null)/hooks/pre-commit"
+if [ -f "$repo_hook" ] && [ -x "$repo_hook" ]; then
+  exec "$repo_hook" "$@"
+fi
+exit 0
 `, fallback.String())
+}
+
+// forwardedHooks are the standard git hooks (other than pre-commit, which
+// runs the scan) for which shield installs a thin shim. With a global
+// core.hooksPath git ignores <repo>/.git/hooks entirely, so each shim
+// forwards to the repo's own hook of the same name.
+var forwardedHooks = []string{
+	"applypatch-msg", "pre-applypatch", "post-applypatch",
+	"prepare-commit-msg", "commit-msg", "post-commit",
+	"pre-merge-commit", "post-merge", "pre-rebase", "post-rewrite",
+	"post-checkout", "pre-push", "pre-auto-gc", "reference-transaction",
+	"push-to-checkout", "fsmonitor-watchman", "post-index-change",
+}
+
+// forwardScript returns a shim that execs the repo's own hook <name>, if
+// present and executable. exec keeps stdin (pre-push, post-rewrite) and
+// the exit status intact.
+func forwardScript(name string) string {
+	return fmt.Sprintf(`#!/bin/sh
+# Installed by "shield install": forwards to the repo's own %[1]s hook,
+# which a global core.hooksPath would otherwise silently disable.
+repo_hook="$(git rev-parse --git-common-dir 2>/dev/null)/hooks/%[1]s"
+if [ -f "$repo_hook" ] && [ -x "$repo_hook" ]; then
+  exec "$repo_hook" "$@"
+fi
+exit 0
+`, name)
 }
 
 // shq shell-quotes s for safe embedding in the generated hook script.
