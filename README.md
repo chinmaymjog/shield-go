@@ -133,6 +133,23 @@ that repo's existing hook manager also invoke shield's hook — `shield
 check-conflicts` prints the exact line to add (e.g. to `.husky/pre-commit`)
 for each conflicting repo it finds.
 
+## Repos' own `.git/hooks`
+
+Once a global `core.hooksPath` is set, git ignores each repo's own
+`.git/hooks/` directory. To avoid silently disabling hooks such as the
+`pre-commit` framework, git-lfs (`pre-push`, `post-checkout`, ...) or a
+`commit-msg` hook, `shield install` handles them for you:
+
+- the `pre-commit` shim runs the scan first and, only if it passes, chains
+  to `$(git rev-parse --git-common-dir)/hooks/pre-commit` when executable;
+- thin shims for the other standard hook names exec
+  `.git/hooks/<name>` when it is present and executable; repos without
+  their own hooks behave exactly as before.
+
+`shield check-conflicts` also lists repos that have executable, non-`.sample`
+files in `.git/hooks` (informational). Re-run `shield install` after
+upgrading to get the new shims.
+
 ## Engine versions (gitleaks / trufflehog)
 
 Nothing needs to be pre-installed — gitleaks and trufflehog are downloaded

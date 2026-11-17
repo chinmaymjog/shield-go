@@ -61,3 +61,50 @@ func resolveAbs(repo, localPath string) string {
 	}
 	return localPath
 }
+
+// RepoHooks is a repo that keeps its own executable hooks in .git/hooks,
+// which a global core.hooksPath would otherwise disable.
+type RepoHooks struct {
+	Repo  string
+	Hooks []string
+}
+
+// FindRepoHooks scans roots for repos with executable, non-.sample files
+// in .git/hooks. Best-effort, like Find.
+func FindRepoHooks(roots []string) []RepoHooks {
+	var found []RepoHooks
+	for _, root := range roots {
+		if info, err := os.Stat(root); err != nil || !info.IsDir() {
+			continue
+		}
+		gitDirs, err := findGitDirs(root)
+		if err != nil {
+			continue
+		}
+		for _, gitDir := range gitDirs {
+			if hooks := executableHooks(filepath.Join(gitDir, "hooks")); len(hooks) > 0 {
+				found = append(found, RepoHooks{Repo: filepath.Dir(gitDir), Hooks: hooks})
+			}
+		}
+	}
+	return found
+}
+
+func executableHooks(dir string) []string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var hooks []string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".sample") {
+			continue
+		}
+		info, err := os.Stat(filepath.Join(dir, e.Name()))
+		if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0 {
+			continue
+		}
+		hooks = append(hooks, e.Name())
+	}
+	return hooks
+}
