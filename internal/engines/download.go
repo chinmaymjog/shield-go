@@ -201,22 +201,50 @@ func extractFile(archivePath, name, destPath string) error {
 
 // installBinary moves src to dest, falling back to copy+remove if they're on
 // different filesystems (unlike `mv`, os.Rename doesn't fall back on its own).
+//
+// The fallback never writes to dest directly: it copies into a temp file in
+// dest's directory (same filesystem) and renames it into place, so dest is
+// either absent or complete — an interrupted copy can't leave a truncated
+// binary that passes the cache's os.Stat check.
 func installBinary(src, dest string) error {
 	if err := os.Rename(src, dest); err == nil {
 		return nil
 	}
+	if err := copyAtomic(src, dest); err != nil {
+		return err
+	}
+	return os.Remove(src)
+}
+
+// copyAtomic copies src to dest via a temp file in dest's directory followed
+// by an atomic rename. The temp file is removed on any failure.
+func copyAtomic(src, dest string) (err error) {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
-	out, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+
+	out, err := os.CreateTemp(filepath.Dir(dest), filepath.Base(dest)+".tmp-*")
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-	if _, err := io.Copy(out, in); err != nil {
+	tmpPath := out.Name()
+	defer func() {
+		if err != nil {
+			out.Close()
+			os.Remove(tmpPath)
+		}
+	}()
+
+	if _, err = io.Copy(out, in); err != nil {
 		return err
 	}
-	return os.Remove(src)
+	if err = out.Chmod(0o755); err != nil {
+		return err
+	}
+	if err = out.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, dest)
 }
