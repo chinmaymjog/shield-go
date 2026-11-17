@@ -32,6 +32,12 @@ func runCheckConflicts(args []string) int {
 		fmt.Printf("    local core.hooksPath = %s  (overrides SourceGuard Shield — NOT scanned)\n", c.LocalPath)
 	}
 
+	ownHooks := conflicts.FindRepoHooks(roots)
+	for _, r := range ownHooks {
+		fmt.Printf("ℹ️  %s\n", r.Repo)
+		fmt.Printf("    own .git/hooks: %s  (shield forwards these; a hook not in shield's list is NOT run)\n", strings.Join(r.Hooks, ", "))
+	}
+
 	fmt.Println()
 	if len(found) == 0 {
 		fmt.Println("✅ No conflicts found under the scanned roots.")
