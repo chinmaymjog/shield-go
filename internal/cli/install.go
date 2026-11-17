@@ -123,8 +123,12 @@ var forwardedHooks = []string{
 	"prepare-commit-msg", "commit-msg", "post-commit",
 	"pre-merge-commit", "post-merge", "pre-rebase", "post-rewrite",
 	"post-checkout", "pre-push", "pre-auto-gc", "reference-transaction",
-	"push-to-checkout", "fsmonitor-watchman", "post-index-change",
+	"push-to-checkout",
 }
+
+// fsmonitor-watchman and post-index-change are deliberately not forwarded: an
+// fsmonitor hook that prints nothing tells git no files changed, so a shim
+// without a repo hook behind it could hide modifications from git status.
 
 // forwardScript returns a shim that execs the repo's own hook <name>, if
 // present and executable. exec keeps stdin (pre-push, post-rewrite) and
