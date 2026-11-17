@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/chinmaymjog/shield-go/internal/conflicts"
@@ -40,11 +41,15 @@ func runUninstall(args []string) int {
 		return 1
 	}
 	if info, err := os.Stat(home); err == nil && info.IsDir() {
-		if err := os.RemoveAll(home); err != nil {
+		if err := checkSafeHome(home); err != nil {
+			fmt.Fprintln(os.Stderr, "shield: refusing to remove", home+":", err)
+			return 1
+		}
+		if err := removeShieldHome(home); err != nil {
 			fmt.Fprintln(os.Stderr, "shield: could not remove", home, ":", err)
 			return 1
 		}
-		fmt.Printf("   Removed %s (cached binaries, hook, config)\n", home)
+		fmt.Printf("   Removed shield files from %s (cached binaries, hook)\n", home)
 	} else {
 		fmt.Printf("   %s did not exist — nothing to remove.\n", home)
 	}
@@ -78,4 +83,55 @@ func currentGlobalHooksPath() (string, error) {
 		return "", nil
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// shieldChildren are the only entries shield creates inside its home
+// directory. Uninstall removes just these, never the whole directory, so a
+// SOURCEGUARD_SHIELD_HOME pointing at a shared folder can't cause data loss.
+var shieldChildren = []string{"bin", "hooks"}
+
+// checkSafeHome refuses homes that resolve to the filesystem root, the
+// user's home directory, or the current working directory.
+func checkSafeHome(home string) error {
+	resolved, err := canonical(home)
+	if err != nil {
+		return err
+	}
+	if filepath.Dir(resolved) == resolved {
+		return fmt.Errorf("%s is a filesystem root", resolved)
+	}
+	protected := map[string]string{}
+	if uh, err := os.UserHomeDir(); err == nil {
+		protected["the user's home directory"] = uh
+	}
+	if wd, err := os.Getwd(); err == nil {
+		protected["the current working directory"] = wd
+	}
+	for what, p := range protected {
+		if cp, err := canonical(p); err == nil && cp == resolved {
+			return fmt.Errorf("%s is %s", resolved, what)
+		}
+	}
+	return nil
+}
+
+func canonical(p string) (string, error) {
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(abs)
+}
+
+// removeShieldHome deletes only shieldChildren under home, then removes home
+// itself if (and only if) that leaves it empty.
+func removeShieldHome(home string) error {
+	for _, c := range shieldChildren {
+		if err := os.RemoveAll(filepath.Join(home, c)); err != nil {
+			return err
+		}
+	}
+	// os.Remove fails on a non-empty directory, which is what we want.
+	_ = os.Remove(home)
+	return nil
 }
