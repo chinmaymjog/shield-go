@@ -1,9 +1,11 @@
 package scan
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -199,4 +201,44 @@ func equalUnordered(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// A commit with enough staged paths to exceed the OS argv limit (ARG_MAX)
+// must still snapshot: paths are fed over stdin, not as arguments.
+func TestSnapshot_ManyFilesExceedsArgMax(t *testing.T) {
+	repo := initTestRepo(t)
+	const n = 25000
+	pad := strings.Repeat("x", 200)
+	files := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("%s-%05d.txt", pad, i)
+		if err := os.WriteFile(filepath.Join(repo, name), []byte(name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, name)
+	}
+	if out, err := exec.Command("git", "-C", repo, "add", "-A").CombinedOutput(); err != nil {
+		t.Fatalf("git add failed: %v\n%s", err, out)
+	}
+
+	staged, err := ChangedFiles(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(staged) != n {
+		t.Fatalf("ChangedFiles() returned %d files, want %d", len(staged), n)
+	}
+
+	dir, cleanup, err := Snapshot(repo, staged)
+	if err != nil {
+		t.Fatalf("Snapshot() error = %v", err)
+	}
+	defer cleanup()
+
+	for _, name := range []string{files[0], files[n-1]} {
+		got, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil || string(got) != name {
+			t.Errorf("Snapshot() missing or wrong content for %s: %v", name[len(name)-12:], err)
+		}
+	}
 }
