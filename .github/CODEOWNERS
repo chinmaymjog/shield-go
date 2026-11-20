@@ -4,3 +4,4 @@
 /.goreleaser.yaml       @chinmaymjog
 /internal/engines/      @chinmaymjog
 /internal/cli/          @chinmaymjog
+/internal/denylist/    @chinmaymjog

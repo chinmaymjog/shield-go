@@ -112,6 +112,51 @@ miss on a realistically-shaped, reasonably-random fake secret is a bug;
 please report it. A miss on a malformed or placeholder-looking one is
 usually working as intended — this section is why.
 
+## Deny-list guard
+
+Secrets are not the only thing that should stay out of a repository: internal
+project names, customer names, addresses and similar terms can matter just as
+much. The deny-list guard blocks any commit or push that adds a term from a
+private list. It is off until you create the list.
+
+```sh
+shield install            # also installs the commit-msg and pre-push shims
+shield denylist init      # writes ~/.config/shield/denylist, mode 600
+```
+
+Edit that file. It lives outside every repository and must stay private:
+
+```text
+# where the guard applies: a remote URL and/or a repository path
+remote: github\.com[:/]yourname/
+path: /repos/personal/
+
+# the terms: Go (RE2) regular expressions, case-insensitive; \b marks a word boundary
+\bprojectcodename
+customername
+```
+
+- **Scope is required.** Without a `remote:` or `path:` line the guard does
+  nothing, so repositories where the terms are normal are never affected. A
+  repo is in scope when a remote URL or its path matches. A push is checked when
+  its destination URL matches.
+- **What is checked.** `pre-commit`: staged added lines, staged file paths, and
+  the author and committer identity. `commit-msg`: the message. `pre-push`: every
+  outgoing commit (identity, message, paths, added lines), including commits made
+  with `--no-verify`.
+- **Matches are never printed.** Findings are `path:line` or a commit hash, and a
+  path that itself matches is shown as `[path hidden]`, so the terms do not end up
+  in scrollback or logs.
+- **Fails closed on a broken file.** An invalid pattern blocks the commit with a
+  message that does not repeat the pattern; a missing file means "not configured".
+- **Lock files and SVGs are skipped**, since hashes cause accidental matches.
+- `shield denylist status` shows the effective config and whether the guard is
+  active in the current repo; `shield denylist check` audits a repo's whole local
+  history by hand.
+
+Like any local hook, it can be skipped (`git push --no-verify`). Pair it with a
+server-side check for a backstop.
+
 ## Local hooksPath conflicts
 
 `core.hooksPath` is git's lowest-precedence hook setting: any repo with its
@@ -248,6 +293,9 @@ the configured Homebrew tap.
   meant to be run by hand.
 - `shield check-conflicts [root]` — report repos with a conflicting local
   `core.hooksPath`.
+- `shield denylist init|status|check` — manage the optional deny-list guard
+  (see "Deny-list guard"). `shield denylist hook ...` is invoked by the hooks
+  `shield install` writes; not meant to be run by hand.
 - `shield version` — print the shield version.
 
 ## Design notes
