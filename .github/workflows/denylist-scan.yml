@@ -1,0 +1,22 @@
+name: Denylist scan
+
+# Fails when a change adds a term from the private deny-list stored in the
+# DENYLIST_REGEX secret. Matches are reported as file:line, never as text.
+# The logic lives in chinmaymjog/project-template; docs/denylist-scan.md there
+# explains the setup. Weekly and manual runs scan the whole tree and history.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    uses: chinmaymjog/project-template/.github/workflows/denylist-scan-reusable.yml@584450485cf7009ee73a0ad23716604b067eee66 # main
+    secrets:
+      DENYLIST_REGEX: ${{ secrets.DENYLIST_REGEX }}
