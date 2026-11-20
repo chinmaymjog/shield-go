@@ -17,6 +17,6 @@ permissions:
 
 jobs:
   scan:
-    uses: chinmaymjog/project-template/.github/workflows/denylist-scan-reusable.yml@584450485cf7009ee73a0ad23716604b067eee66 # main
+    uses: chinmaymjog/project-template/.github/workflows/denylist-scan-reusable.yml@602aa9699a231dad938a8f8bc2269934be3452a3 # main
     secrets:
       DENYLIST_REGEX: ${{ secrets.DENYLIST_REGEX }}
