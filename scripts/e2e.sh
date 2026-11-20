@@ -52,12 +52,14 @@ test "$(git rev-list --count HEAD)" = "1" || { echo "FAIL: blocked commit was re
 
 echo "==> deny-list guard: blocks in scope, leaves other repos alone, never prints the term"
 fake="zzforbidden$(openssl rand -hex 3)"
-mkdir -p "$HOME/.config/shield"
-cat > "$HOME/.config/shield/denylist" <<DENY
+# Explicit path: CI runners set XDG_CONFIG_HOME, which would otherwise win.
+export SHIELD_DENYLIST_FILE="$HOME/.config/shield/denylist"
+mkdir -p "$(dirname "$SHIELD_DENYLIST_FILE")"
+cat > "$SHIELD_DENYLIST_FILE" <<DENY
 path: $work/dl
 $fake
 DENY
-chmod 600 "$HOME/.config/shield/denylist"
+chmod 600 "$SHIELD_DENYLIST_FILE"
 status_out="$(shield denylist status)"
 grep -q "patterns:  1" <<< "$status_out" || { echo "FAIL: denylist status"; echo "$status_out"; exit 1; }
 
