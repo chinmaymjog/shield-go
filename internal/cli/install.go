@@ -44,7 +44,11 @@ func runInstall(args []string) int {
 
 	for _, name := range forwardedHooks {
 		shimPath := filepath.Join(hooksDir, name)
-		if err := os.WriteFile(shimPath, []byte(forwardScript(name)), 0o755); err != nil {
+		shim := forwardScript(name)
+		if name == "commit-msg" || name == "pre-push" {
+			shim = denylistForwardScript(name, selfPathHint())
+		}
+		if err := os.WriteFile(shimPath, []byte(shim), 0o755); err != nil {
 			fmt.Fprintln(os.Stderr, "shield: could not write", shimPath, ":", err)
 			return 1
 		}
@@ -78,6 +82,34 @@ func runInstall(args []string) int {
 // best-effort extra location for non-Homebrew installs (e.g. a local
 // `go build` whose output directory isn't on PATH or in the list above).
 func hookScript(selfHint string) string {
+	return fmt.Sprintf(`#!/bin/sh
+# Installed by "shield install". Resolves the shield binary robustly:
+# $PATH first (the common case for terminal-driven commits), then a short
+# list of well-known install locations for GUI git clients that run hooks
+# with a minimal PATH. Runs the deny-list check (a no-op unless configured),
+# then the scan, then chains to the repo's own pre-commit hook (core.hooksPath
+# would otherwise silently disable it).
+%s
+if [ -z "$SHIELD" ]; then
+  echo "shield: could not locate the shield binary (checked \$PATH and common install locations)." >&2
+  echo "shield: re-run 'shield install', or make sure shield is on \$PATH, then retry the commit." >&2
+  exit 1
+fi
+"$SHIELD" denylist hook pre-commit
+[ "$?" -eq 1 ] && exit 1
+"$SHIELD" hook-run "$@" || exit $?
+repo_hook="$(git rev-parse --git-common-dir 2>/dev/null)/hooks/pre-commit"
+if [ -f "$repo_hook" ] && [ -x "$repo_hook" ]; then
+  exec "$repo_hook" "$@"
+fi
+exit 0
+`, shieldLookup(selfHint))
+}
+
+// shieldLookup returns the shell snippet that sets $SHIELD to the shield binary
+// (empty if it cannot be found): $PATH first, then well-known locations, then a
+// best-effort hint for non-Homebrew installs such as a local `go build`.
+func shieldLookup(selfHint string) string {
 	candidates := append(append([]string{}, wellKnownShieldLocations...), selfHint)
 
 	var fallback strings.Builder
@@ -87,31 +119,58 @@ func hookScript(selfHint string) string {
 		}
 		fmt.Fprintf(&fallback, "[ -z \"$SHIELD\" ] && [ -x %s ] && SHIELD=%s\n", shq(c), shq(c))
 	}
-
-	return fmt.Sprintf(`#!/bin/sh
-# Installed by "shield install". Resolves the shield binary robustly:
-# $PATH first (the common case for terminal-driven commits), then a short
-# list of well-known install locations for GUI git clients that run hooks
-# with a minimal PATH. After the scan passes, chains to the repo's own
-# pre-commit hook (core.hooksPath would otherwise silently disable it).
-SHIELD=
+	return fmt.Sprintf(`SHIELD=
 if command -v shield >/dev/null 2>&1; then
   SHIELD=shield
 else
 %s
+fi`, fallback.String())
+}
+
+// denylistForwardScript returns the shim for commit-msg and pre-push: it runs the
+// deny-list check, then forwards to the repo's own hook of the same name. Only an
+// exit code of 1 from shield blocks; a missing or older shield is ignored here
+// (the pre-commit hook already reports a missing binary). pre-push reads stdin
+// twice (the check and the repo hook), so it is buffered in a temp file.
+func denylistForwardScript(name, selfHint string) string {
+	if name == "pre-push" {
+		return fmt.Sprintf(`#!/bin/sh
+# Installed by "shield install": checks outgoing commits against the deny-list,
+# then forwards to the repo's own pre-push hook, which a global core.hooksPath
+# would otherwise silently disable.
+%s
+tmp="$(mktemp)"
+cat > "$tmp"
+if [ -n "$SHIELD" ]; then
+  "$SHIELD" denylist hook pre-push "$@" < "$tmp"
+  if [ "$?" -eq 1 ]; then rm -f "$tmp"; exit 1; fi
 fi
-if [ -z "$SHIELD" ]; then
-  echo "shield: could not locate the shield binary (checked \$PATH and common install locations)." >&2
-  echo "shield: re-run 'shield install', or make sure shield is on \$PATH, then retry the commit." >&2
-  exit 1
+repo_hook="$(git rev-parse --git-common-dir 2>/dev/null)/hooks/pre-push"
+if [ -f "$repo_hook" ] && [ -x "$repo_hook" ]; then
+  "$repo_hook" "$@" < "$tmp"
+  rc=$?
+  rm -f "$tmp"
+  exit $rc
 fi
-"$SHIELD" hook-run "$@" || exit $?
-repo_hook="$(git rev-parse --git-common-dir 2>/dev/null)/hooks/pre-commit"
+rm -f "$tmp"
+exit 0
+`, shieldLookup(selfHint))
+	}
+	return fmt.Sprintf(`#!/bin/sh
+# Installed by "shield install": checks the commit message against the deny-list,
+# then forwards to the repo's own %[2]s hook, which a global core.hooksPath would
+# otherwise silently disable.
+%[1]s
+if [ -n "$SHIELD" ]; then
+  "$SHIELD" denylist hook %[2]s "$@"
+  [ "$?" -eq 1 ] && exit 1
+fi
+repo_hook="$(git rev-parse --git-common-dir 2>/dev/null)/hooks/%[2]s"
 if [ -f "$repo_hook" ] && [ -x "$repo_hook" ]; then
   exec "$repo_hook" "$@"
 fi
 exit 0
-`, fallback.String())
+`, shieldLookup(selfHint), name)
 }
 
 // forwardedHooks are the standard git hooks (other than pre-commit, which

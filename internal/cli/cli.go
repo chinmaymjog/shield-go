@@ -36,6 +36,8 @@ func Run(args []string) int {
 		return runHook(args[1:])
 	case "check-conflicts":
 		return runCheckConflicts(args[1:])
+	case "denylist":
+		return runDenylist(args[1:])
 	case "-h", "--help", "help":
 		printUsage(os.Stdout)
 		return 0
@@ -54,6 +56,7 @@ Commands:
   uninstall         remove shield's global git pre-commit hook
   hook-run          run as the git pre-commit hook (scans staged files)
   check-conflicts   report repos with a conflicting local core.hooksPath
+  denylist          block commits and pushes that add terms from a private list
   version           print the shield version
 
 `)

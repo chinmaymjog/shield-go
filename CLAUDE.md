@@ -4,7 +4,7 @@ Local git pre-commit secret scanning (gitleaks + trufflehog), installed once per
 
 ## Layout
 - `cmd/` — CLI entrypoints
-- `internal/` — implementation packages
+- `internal/` — implementation packages (`denylist/` is the private-terms guard: it must never print matched text)
 - `.goreleaser.yaml` — release config (do not change without being asked)
 
 ## Working on issues
