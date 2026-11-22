@@ -76,7 +76,8 @@ func Run() int {
 
 	fmt.Fprintln(os.Stderr, "❌ SourceGuard Shield: potential secret(s) detected. Commit blocked.")
 	if !gitleaksOK {
-		fmt.Fprintln(os.Stderr, "   gitleaks: if a finding is a false positive, add its fingerprint to .gitleaksignore.")
+		fmt.Fprintln(os.Stderr, "   gitleaks: if a finding is a false positive, add its fingerprint to .gitleaksignore")
+		fmt.Fprintln(os.Stderr, "   and commit that file on its own first — only the committed version is honoured.")
 	}
 	if !trufflehogOK {
 		fmt.Fprintln(os.Stderr, "   trufflehog: findings are verified credentials; rotate/revoke instead of suppressing.")

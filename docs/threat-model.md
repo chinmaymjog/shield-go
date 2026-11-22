@@ -59,7 +59,7 @@ shield does not trust:
 - Anything fetched from the network until it matches a pinned digest.
 - Anything in the engine cache that is not a regular file owned by the current
   user and closed to group and other.
-- The contents of a repository, other than `.gitleaksignore` (see the gap below).
+- The contents of a repository, other than a committed `.gitleaksignore` (see the gap below).
 
 ## Threats and mitigations
 
@@ -160,10 +160,12 @@ coverage that is not there.
 - **`git commit --no-verify` and hook overrides.** A developer who wants to
   bypass the hook can. shield catches accidents, not intent. Server-side or CI
   scanning is the control for that.
-- **`.gitleaksignore` is read from the working tree.** The file is used if
-  present when a commit is made, including one added or changed in that same
-  commit. A repository that ships a `.gitleaksignore` can therefore suppress
-  findings, and a developer is not told a finding was suppressed.
+- **A committed `.gitleaksignore` is trusted.** Only the version at `HEAD` is
+  honoured, so an entry cannot suppress a finding in the commit that adds it, and
+  shield warns when the working-tree copy differs. But a repository that ships a
+  `.gitleaksignore` in its history can still suppress findings in later commits
+  without the developer having reviewed it, and shield does not report when an
+  entry actually suppressed something. (#46)
 - **History.** Only what is staged in this commit is scanned. Secrets already in
   history, or in unstaged files, are out of scope.
 - **Deletions and mode changes are not scanned.** The staged-file filter is
@@ -199,6 +201,6 @@ coverage that is not there.
 | Verify upstream engine signatures, not only a pinned digest | #43 |
 | Confirm the first signed release verifies as documented | follow-up to #39 |
 | Create the hooks directory 0700 in `shield install` | #47 |
-| Stop a `.gitleaksignore` added in the same commit silently suppressing findings | #46 |
+| Report when a committed `.gitleaksignore` entry suppresses a finding | follow-up to #46 |
 | Check what trufflehog prints for a finding | not yet filed |
 | Surface `core.hooksPath` overrides that appear after install | #48 |
