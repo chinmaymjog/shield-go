@@ -84,8 +84,11 @@ elsewhere in a repo's history are out of scope for a pre-commit hook by
 design; that's a job for a separate history/continuous scanner.
 
 A gitleaks false positive can be suppressed per-repo via a
-`.gitleaksignore` file (fingerprint-based, checked automatically if
-present). A trufflehog finding is a *verified* credential — the tool
+`.gitleaksignore` file (fingerprint-based). Only the version **already
+committed at `HEAD`** is honoured, so an entry never suppresses a finding
+in the same commit that adds it: commit the ignore file on its own first,
+then the file it covers. If the working-tree copy differs from `HEAD`,
+shield warns and uses the committed one. A trufflehog finding is a *verified* credential — the tool
 actually confirmed it works against the live provider — so the answer is
 to rotate/revoke it, not suppress it.
 
