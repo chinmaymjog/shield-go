@@ -198,6 +198,7 @@ coverage that is not there.
 | --- | --- |
 | Verify upstream engine signatures, not only a pinned digest | #43 |
 | Confirm the first signed release verifies as documented | follow-up to #39 |
-| Create the hooks directory 0700 in `shield install` | not yet filed |
-| Decide how to surface a `.gitleaksignore` that changed in the same commit | not yet filed |
+| Create the hooks directory 0700 in `shield install` | #47 |
+| Stop a `.gitleaksignore` added in the same commit silently suppressing findings | #46 |
 | Check what trufflehog prints for a finding | not yet filed |
+| Surface `core.hooksPath` overrides that appear after install | #48 |
