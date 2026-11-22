@@ -154,3 +154,89 @@ func TestVerifiedDownload_MissingPin_FailsClosedWithoutNetworkCall(t *testing.T)
 	}
 	assertNotInstalled(t, dest)
 }
+
+// buildTarGzEntry builds a one-entry archive with an arbitrary header, for
+// exercising non-regular entry types.
+func buildTarGzEntry(t *testing.T, hdr *tar.Header, content []byte) string {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatal(err)
+	}
+	if len(content) > 0 {
+		if _, err := tw.Write(content); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "a.tar.gz")
+	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestExtractFile_RejectsNonRegularEntries(t *testing.T) {
+	for name, typeflag := range map[string]byte{
+		"symlink":  tar.TypeSymlink,
+		"hardlink": tar.TypeLink,
+		"dir":      tar.TypeDir,
+	} {
+		t.Run(name, func(t *testing.T) {
+			archive := buildTarGzEntry(t, &tar.Header{
+				Name: "tool", Typeflag: typeflag, Linkname: "/etc/passwd", Mode: 0o755,
+			}, nil)
+			dest := filepath.Join(t.TempDir(), "out")
+			if err := extractFile(archive, "tool", dest); err == nil {
+				t.Fatal("expected error for a non-regular entry, got nil")
+			}
+			assertNotInstalled(t, dest)
+		})
+	}
+}
+
+func TestExtractFile_RejectsOversizedEntry(t *testing.T) {
+	original := maxExtractBytes
+	maxExtractBytes = 16
+	t.Cleanup(func() { maxExtractBytes = original })
+
+	content := bytes.Repeat([]byte("x"), 64)
+	archive := buildTarGzEntry(t, &tar.Header{
+		Name: "tool", Typeflag: tar.TypeReg, Mode: 0o755, Size: int64(len(content)),
+	}, content)
+	dest := filepath.Join(t.TempDir(), "out")
+
+	if err := extractFile(archive, "tool", dest); err == nil {
+		t.Fatal("expected error for an entry over the size cap, got nil")
+	}
+	assertNotInstalled(t, dest) // the partial file must be cleaned up
+}
+
+func TestExtractFile_CreatesFileWith0700AndRefusesToOverwrite(t *testing.T) {
+	content := []byte("hello")
+	archive := buildTarGzEntry(t, &tar.Header{
+		Name: "tool", Typeflag: tar.TypeReg, Mode: 0o777, Size: int64(len(content)),
+	}, content)
+	dest := filepath.Join(t.TempDir(), "out")
+
+	if err := extractFile(archive, "tool", dest); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o700 {
+		t.Fatalf("expected mode 0700, got %v", got)
+	}
+	if err := extractFile(archive, "tool", dest); err == nil {
+		t.Fatal("expected an error when the destination already exists, got nil")
+	}
+}
