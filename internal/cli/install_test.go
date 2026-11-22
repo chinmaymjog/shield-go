@@ -128,3 +128,100 @@ func TestShimsRunRepoHooks(t *testing.T) {
 	os.Remove(filepath.Join(hooks, "pre-push"))
 	run(shim("pp2", forwardScript("pre-push")))
 }
+
+// isolateInstall points shield's state, git's global config and HOME at temp
+// dirs so runInstall cannot touch the real machine. It returns the shield home.
+func isolateInstall(t *testing.T) string {
+	t.Helper()
+	fakeHome := t.TempDir()
+	shieldHome := filepath.Join(fakeHome, "shield-home")
+	t.Setenv("HOME", fakeHome)
+	t.Setenv("SOURCEGUARD_SHIELD_HOME", shieldHome)
+	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(fakeHome, "gitconfig"))
+	return shieldHome
+}
+
+func assertMode(t *testing.T, path string, want os.FileMode) {
+	t.Helper()
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != want {
+		t.Errorf("%s mode = %v, want %v", path, got, want)
+	}
+}
+
+func TestInstallCreatesPrivateDirsAndHooks(t *testing.T) {
+	shieldHome := isolateInstall(t)
+
+	if rc := runInstall(nil); rc != 0 {
+		t.Fatalf("runInstall = %d, want 0", rc)
+	}
+
+	hooks := filepath.Join(shieldHome, "hooks")
+	assertMode(t, shieldHome, 0o700)
+	assertMode(t, hooks, 0o700)
+	for _, name := range []string{"pre-commit", "commit-msg", "pre-push", "post-checkout"} {
+		assertMode(t, filepath.Join(hooks, name), 0o700)
+	}
+}
+
+func TestReinstallTightensLooseDirsAndFiles(t *testing.T) {
+	shieldHome := isolateInstall(t)
+	hooks := filepath.Join(shieldHome, "hooks")
+	if err := os.MkdirAll(hooks, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(shieldHome, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	loose := filepath.Join(hooks, "pre-commit")
+	if err := os.WriteFile(loose, []byte("old"), 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(loose, 0o777); err != nil {
+		t.Fatal(err)
+	}
+
+	if rc := runInstall(nil); rc != 0 {
+		t.Fatalf("runInstall = %d, want 0", rc)
+	}
+
+	assertMode(t, shieldHome, 0o700)
+	assertMode(t, hooks, 0o700)
+	assertMode(t, loose, 0o700)
+	got, err := os.ReadFile(loose)
+	if err != nil || string(got) == "old" {
+		t.Fatalf("pre-commit was not rewritten (err %v)", err)
+	}
+}
+
+// A planted symlink at a hook path must be replaced, not written through to
+// wherever it points.
+func TestInstallReplacesSymlinkedHookWithoutWritingThrough(t *testing.T) {
+	shieldHome := isolateInstall(t)
+	hooks := filepath.Join(shieldHome, "hooks")
+	if err := os.MkdirAll(hooks, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	victim := filepath.Join(t.TempDir(), "victim")
+	if err := os.WriteFile(victim, []byte("untouched"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(victim, filepath.Join(hooks, "pre-commit")); err != nil {
+		t.Fatal(err)
+	}
+
+	if rc := runInstall(nil); rc != 0 {
+		t.Fatalf("runInstall = %d, want 0", rc)
+	}
+
+	if got, _ := os.ReadFile(victim); string(got) != "untouched" {
+		t.Fatalf("install wrote through the symlink: victim = %q", got)
+	}
+	info, err := os.Lstat(filepath.Join(hooks, "pre-commit"))
+	if err != nil || info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("pre-commit should be a regular file after install (err %v, mode %v)", err, info.Mode())
+	}
+}
