@@ -161,7 +161,17 @@ func expectedDigest(checksumsPath, asset string) (string, error) {
 	return "", nil
 }
 
-// extractFile pulls the single file named "name" out of a .tar.gz archive.
+// maxExtractBytes caps how much of the engine binary extractFile will write.
+// It is a var so tests can lower it. The real engines are well under 1 GiB;
+// the cap exists so extraction never depends on the checksum pin as its only
+// defence against a decompression bomb.
+var maxExtractBytes int64 = 1 << 30
+
+// extractFile pulls the single regular file named "name" out of a .tar.gz
+// archive. Entries that are not regular files (symlinks, hardlinks,
+// directories, devices) are rejected, the output is created exclusively with
+// mode 0700 so it is never briefly more permissive than intended, and at most
+// maxExtractBytes are written.
 func extractFile(archivePath, name, destPath string) error {
 	f, err := os.Open(archivePath)
 	if err != nil {
@@ -187,16 +197,39 @@ func extractFile(archivePath, name, destPath string) error {
 		if hdr.Name != name {
 			continue
 		}
-		out, err := os.Create(destPath)
-		if err != nil {
-			return err
+		if hdr.Typeflag != tar.TypeReg {
+			return fmt.Errorf("%s in %s is not a regular file (type %q) — refusing to extract",
+				name, filepath.Base(archivePath), hdr.Typeflag)
 		}
-		defer out.Close()
-		// archivePath was already verified against a pinned checksum above,
-		// so this isn't decompressing attacker-controlled input.
-		_, err = io.Copy(out, tr)
+		return writeExtracted(tr, destPath)
+	}
+}
+
+// writeExtracted copies r to a new file at destPath, failing if destPath
+// already exists or if r yields more than maxExtractBytes. A partial file is
+// removed on any failure.
+func writeExtracted(r io.Reader, destPath string) (err error) {
+	out, err := os.OpenFile(destPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o700)
+	if err != nil {
 		return err
 	}
+	defer func() {
+		if cerr := out.Close(); err == nil {
+			err = cerr
+		}
+		if err != nil {
+			os.Remove(destPath)
+		}
+	}()
+
+	n, err := io.Copy(out, io.LimitReader(r, maxExtractBytes+1))
+	if err != nil {
+		return err
+	}
+	if n > maxExtractBytes {
+		return fmt.Errorf("extracted file exceeds the %d-byte limit — refusing to continue", maxExtractBytes)
+	}
+	return nil
 }
 
 // installBinary moves src to dest, falling back to copy+remove if they're on
