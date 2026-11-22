@@ -24,6 +24,16 @@ func Ensure(spec Spec) (string, error) {
 	}
 	destPath := filepath.Join(binDir, fmt.Sprintf("%s-%s-%s-%s", spec.Name, spec.Version, assetOS, assetArch))
 
+	// A cached binary is only trusted if it is a regular file we own that
+	// nobody else can write to. Anything else is discarded and re-fetched
+	// through the verified download path rather than executed.
+	if _, err := os.Stat(destPath); err == nil {
+		if err := trustedBinary(destPath); err != nil {
+			if rmErr := os.Remove(destPath); rmErr != nil {
+				return "", fmt.Errorf("untrusted cached %s (%v) and could not remove it: %w", spec.Name, err, rmErr)
+			}
+		}
+	}
 	if _, err := os.Stat(destPath); err != nil {
 		if err := verifiedDownload(spec, assetOS, assetArch, destPath); err != nil {
 			return "", err
