@@ -36,6 +36,31 @@ shield uninstall   # run this first, while `shield` is still on PATH
 brew uninstall chinmaymjog/homebrew-shield/shield
 ```
 
+## Verifying a release
+
+Each release publishes `checksums.txt`, a keyless [cosign](https://github.com/sigstore/cosign)
+signature for it (`checksums.txt.sigstore.json`), a per-archive SBOM, and a
+GitHub build-provenance attestation. To check a download (replace `X.Y.Z`):
+
+```sh
+gh release download vX.Y.Z -R chinmaymjog/shield-go \
+  -p checksums.txt -p checksums.txt.sigstore.json -p 'shield_X.Y.Z_*.tar.gz'
+
+# 1. checksums.txt was signed by this repo's release workflow
+cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
+  --certificate-identity "https://github.com/chinmaymjog/shield-go/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+# 2. your archive matches checksums.txt (use `shasum -a 256 -c` on macOS)
+sha256sum -c --ignore-missing checksums.txt
+
+# 3. the archive was built by that workflow from this repo
+gh attestation verify shield_X.Y.Z_linux_amd64.tar.gz -R chinmaymjog/shield-go
+```
+
+Releases published before signing was added (up to and including v0.3.0)
+have only `checksums.txt`.
+
 ## How scanning works
 
 On each `git commit`, the installed hook runs `shield hook-run`, which:
