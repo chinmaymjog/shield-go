@@ -37,3 +37,11 @@ func BinDir() (string, error) {
 	}
 	return dir, nil
 }
+
+// SecureDir makes sure dir exists and is private to the current user: owned by
+// them and 0700. Loose permissions on a directory they own are tightened; a
+// directory owned by someone else is refused. Use it for any directory whose
+// contents get executed.
+func SecureDir(dir string) error {
+	return securePrivateDir(dir)
+}

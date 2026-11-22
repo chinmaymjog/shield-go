@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/chinmaymjog/shield-go/internal/conflicts"
+	"github.com/chinmaymjog/shield-go/internal/engines"
 )
 
 // wellKnownShieldLocations are absolute paths checked, in order, by the
@@ -31,13 +32,23 @@ func runInstall(args []string) int {
 		fmt.Fprintln(os.Stderr, "shield:", err)
 		return 1
 	}
-	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
-		fmt.Fprintln(os.Stderr, "shield: could not create", hooksDir, ":", err)
+	// Git executes everything in this directory on every commit in every repo,
+	// so write access to it is code execution. Keep it, and the state directory
+	// above it, private to the current user.
+	home, err := engines.Home()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "shield:", err)
 		return 1
+	}
+	for _, dir := range []string{home, hooksDir} {
+		if err := engines.SecureDir(dir); err != nil {
+			fmt.Fprintln(os.Stderr, "shield: could not secure", dir, ":", err)
+			return 1
+		}
 	}
 
 	hookPath := filepath.Join(hooksDir, "pre-commit")
-	if err := os.WriteFile(hookPath, []byte(hookScript(selfPathHint())), 0o755); err != nil {
+	if err := writeHook(hookPath, hookScript(selfPathHint())); err != nil {
 		fmt.Fprintln(os.Stderr, "shield: could not write", hookPath, ":", err)
 		return 1
 	}
@@ -48,7 +59,7 @@ func runInstall(args []string) int {
 		if name == "commit-msg" || name == "pre-push" {
 			shim = denylistForwardScript(name, selfPathHint())
 		}
-		if err := os.WriteFile(shimPath, []byte(shim), 0o755); err != nil {
+		if err := writeHook(shimPath, shim); err != nil {
 			fmt.Fprintln(os.Stderr, "shield: could not write", shimPath, ":", err)
 			return 1
 		}
@@ -218,4 +229,37 @@ func selfPathHint() string {
 		return ""
 	}
 	return exe
+}
+
+// writeHook installs a hook script at path with mode 0700, replacing whatever
+// is there. It writes a temp file in the same directory and renames it into
+// place, so a pre-existing file is replaced outright — never written through,
+// which matters if it was a symlink — and its old owner and mode do not
+// survive a re-install.
+func writeHook(path, content string) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	fail := func(err error) error {
+		tmp.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if _, err := tmp.WriteString(content); err != nil {
+		return fail(err)
+	}
+	if err := tmp.Chmod(0o700); err != nil {
+		return fail(err)
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return nil
 }

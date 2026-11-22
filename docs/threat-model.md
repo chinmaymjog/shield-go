@@ -98,6 +98,11 @@ shield does not trust:
   by the user, or is group/world-writable, is deleted and re-fetched through the
   verified download rather than executed. This also covers
   `SOURCEGUARD_SHIELD_HOME` pointing at a directory owned by someone else. (#38)
+- **Hooks directory:** `shield install` applies the same rules to the state
+  directory and the hooks directory (0700, owned by the user, foreign-owned
+  directories refused) and installs each hook script 0700 via a temp file and
+  rename, so a re-install replaces a loose or symlinked hook instead of writing
+  through it. (#47)
 - **Residual:** a same-user process can still modify the cache. The cached
   binary is not re-hashed against a stored digest, because an attacker who can
   write the binary can write the digest.
@@ -184,9 +189,6 @@ coverage that is not there.
 - **Same-user compromise.** A malicious dependency or script running as the
   developer can edit the cache, the hook scripts, the global git config and the
   deny-list. shield does not defend against it.
-- **The hooks directory is created 0755 by `shield install`.** It sits inside the
-  0700 state directory once the cache has been used, but `install` itself does not
-  yet restrict it.
 - **`$PATH` lookup.** The hook script finds `shield` on `$PATH` first, then a few
   well-known install locations. An attacker who controls `$PATH` can run a
   different `shield`.
@@ -200,7 +202,6 @@ coverage that is not there.
 | --- | --- |
 | Verify upstream engine signatures, not only a pinned digest | #43 |
 | Confirm the first signed release verifies as documented | follow-up to #39 |
-| Create the hooks directory 0700 in `shield install` | #47 |
 | Report when a committed `.gitleaksignore` entry suppresses a finding | follow-up to #46 |
 | Check what trufflehog prints for a finding | not yet filed |
 | Surface `core.hooksPath` overrides that appear after install | #48 |
