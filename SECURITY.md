@@ -3,6 +3,9 @@
 shield-go installs git hooks that scan commits for secrets, so integrity of the
 binary and the hook installation matters.
 
+What shield defends against, what it relies on, and its known gaps are in the
+[threat model](docs/threat-model.md).
+
 ## Reporting a vulnerability
 
 Please **do not open a public issue**. Use GitHub's private reporting:

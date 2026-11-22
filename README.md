@@ -61,6 +61,9 @@ gh attestation verify shield_X.Y.Z_linux_amd64.tar.gz -R chinmaymjog/shield-go
 Releases published before signing was added (up to and including v0.3.0)
 have only `checksums.txt`.
 
+For what shield does and does not defend against, see the
+[threat model](docs/threat-model.md).
+
 ## How scanning works
 
 On each `git commit`, the installed hook runs `shield hook-run`, which:
