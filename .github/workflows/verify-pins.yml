@@ -1,0 +1,42 @@
+name: Verify engine pins
+
+# Checks the gitleaks/trufflehog pins in internal/engines/spec.go against
+# upstream: the pinned checksums.txt digest must match what upstream serves,
+# and trufflehog's cosign signature must verify against its release workflow.
+# Runs when the pins change, and weekly because upstream releases are not
+# immutable — an asset replaced under an existing tag shows up here.
+on:
+  pull_request:
+    paths:
+      - internal/engines/spec.go
+      - internal/engines/verify_pins_test.go
+      - scripts/verify-pins.sh
+      - .github/workflows/verify-pins.yml
+  push:
+    branches: [main]
+    paths:
+      - internal/engines/spec.go
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-pins-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-pins:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
+        with:
+          go-version-file: go.mod
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      - run: scripts/verify-pins.sh

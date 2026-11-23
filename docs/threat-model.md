@@ -120,10 +120,30 @@ shield does not trust:
 
 ### An upstream engine release is compromised
 
-- **Mitigation:** only the pin. The pin is a digest of a file the maintainer
-  saw at bump time; it does not prove the upstream project signed it. A pin taken
-  from an already-compromised release would be trusted.
-- **Gap:** shield does not verify upstream signatures. Tracked in #43.
+- **Mitigation:** the pin (see above), plus a CI check
+  (`scripts/verify-pins.sh`, `.github/workflows/verify-pins.yml`) that runs when
+  `internal/engines/spec.go` changes and weekly. It confirms the pinned
+  `checksums.txt` digest equals what upstream serves, which also catches an
+  asset replaced under an existing tag (upstream releases are not immutable). (#43)
+- **trufflehog:** upstream signs `checksums.txt` keylessly with cosign, so the
+  same check verifies the signature against trufflehog's own release workflow
+  identity and the GitHub OIDC issuer. A pin that was not signed by that workflow
+  fails CI.
+- **gitleaks:** upstream publishes no signature, SBOM or attestation, so nothing
+  can be verified. Its pin is **trust-on-first-use**: it proves the file did not
+  change since the maintainer pinned it, not that gitleaks published it. The CI
+  check fails if a newer gitleaks release starts publishing a signature, so the
+  pin gets upgraded to verified at that point.
+- **Why not at runtime:** trufflehog's signature is a detached `.sig`/`.pem` pair
+  with a certificate valid for about ten minutes, so checking it later needs a
+  transparency-log lookup and a large Sigstore dependency on every user's
+  machine. The shipped pin already fixes the digest, so verifying when the pin is
+  bumped checks the thing users actually trust at far lower cost.
+- **Residual:** the check runs in CI, not on user machines, and depends on the
+  maintainer not merging a bump with the check failing. cosign's `--certificate`
+  and `--signature` flags are deprecated upstream in favour of bundles; trufflehog
+  does not publish a bundle, so the check will need revisiting if they are removed
+  (it fails loudly rather than skipping).
 
 ### The hook is silently bypassed
 
@@ -200,7 +220,6 @@ coverage that is not there.
 
 | Item | Tracking |
 | --- | --- |
-| Verify upstream engine signatures, not only a pinned digest | #43 |
 | Confirm the first signed release verifies as documented | follow-up to #39 |
 | Report when a committed `.gitleaksignore` entry suppresses a finding | follow-up to #46 |
 | Check what trufflehog prints for a finding | not yet filed |
